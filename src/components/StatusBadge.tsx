@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export function StatusBadge({ status }: { status?: string }) {
+export function StatusBadge({ status }: { status?: string | undefined }) {
   const s = (status ?? "unknown").toLowerCase();
   const tone =
     ["ok", "success", "succeeded", "completed", "done"].includes(s)

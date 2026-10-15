@@ -24,8 +24,8 @@ export type ChatMsg = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  attachments?: Attachment[];
-  error?: string;
+  attachments?: Attachment[] | undefined;
+  error?: string | undefined;
 };
 
 export class ApiError extends Error {
@@ -58,7 +58,7 @@ async function readError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, detail ? `${base} ${String(detail).slice(0, 300)}` : base);
 }
 
-async function* sse(res: Response): AsyncGenerator<{ event?: string; data: string }> {
+async function* sse(res: Response): AsyncGenerator<{ event?: string | undefined; data: string }> {
   const reader = res.body!.getReader();
   const dec = new TextDecoder();
   let buf = "";
@@ -117,7 +117,7 @@ export async function streamReply(opts: {
   agent: string;
   sessionId: string;
   history: ChatMsg[];
-  system?: string;
+  system?: string | undefined;
   signal?: AbortSignal;
   onDelta: (text: string) => void;
 }) {
@@ -226,7 +226,7 @@ export type CronJob = {
   state?: { lastRunAtMs?: number; nextRunAtMs?: number; lastStatus?: string; running?: boolean };
   lastRunAt?: string | number;
   nextRunAt?: string | number;
-  status?: string;
+  status?: string | undefined;
   [k: string]: any;
 };
 
@@ -236,10 +236,10 @@ export type CronRun = {
   ts?: number;
   startedAt?: string | number;
   finishedAt?: string | number;
-  status?: string;
+  status?: string | undefined;
   summary?: string;
   output?: string;
-  error?: string;
+  error?: string | undefined;
   durationMs?: number;
   [k: string]: any;
 };

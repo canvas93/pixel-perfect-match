@@ -119,7 +119,7 @@ function JobPage() {
                         <span className="font-medium">{fmtTime(r.ts ?? r.startedAt)}</span>
                       </div>
                       <div className="mt-1 flex items-center gap-2">
-                        <StatusBadge status={r.status ?? r.action} />
+                        <StatusBadge status={r.status ?? r['action']} />
                         {r.durationMs != null && <span className="text-muted-foreground">{(r.durationMs / 1000).toFixed(1)}s</span>}
                       </div>
                     </button>

@@ -55,7 +55,7 @@ export function ChartBlock({ spec }: { spec: ChartSpec }) {
             <PieChart>
               <Tooltip {...tip} />
               <Legend />
-              <Pie data={spec.data} dataKey={spec.series[0]} nameKey={spec.xKey} outerRadius={90} innerRadius={45}>
+              <Pie data={spec.data} dataKey={spec.series[0] ?? "value"} nameKey={spec.xKey} outerRadius={90} innerRadius={45}>
                 {spec.data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
             </PieChart>

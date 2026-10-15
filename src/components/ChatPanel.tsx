@@ -14,7 +14,7 @@ export function ChatPanel({
   emptyState,
 }: {
   threadId: string;
-  system?: string;
+  system?: string | undefined;
   compact?: boolean;
   placeholder?: string;
   emptyState?: React.ReactNode;
