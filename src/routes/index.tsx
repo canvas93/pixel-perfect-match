@@ -1,24 +1,25 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { threads } from "@/lib/threads";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "OpenClaw — Chat with your agents" },
+      { name: "description", content: "ChatGPT-style workspace for OpenClaw agents and automations." },
+      { property: "og:title", content: "OpenClaw — Chat with your agents" },
+      { property: "og:description", content: "ChatGPT-style workspace for OpenClaw agents and automations." },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+  const navigate = useNavigate();
+  useEffect(() => {
+    const existing = threads.all().find((t) => !t.jobId && t.messages.length === 0);
+    const t = existing ?? threads.create();
+    navigate({ to: "/c/$threadId", params: { threadId: t.id }, replace: true });
+  }, [navigate]);
+  return null;
 }
