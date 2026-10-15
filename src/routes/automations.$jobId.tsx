@@ -24,7 +24,7 @@ export const Route = createFileRoute("/automations/$jobId")({
 });
 
 const runKey = (r: CronRun, i: number) => String(r.runId ?? r.id ?? r.ts ?? r.startedAt ?? i);
-const runOutput = (r: CronRun) => r.output ?? r.summary ?? r.result ?? r.text ?? (r.error ? `**Error:** ${r.error}` : "");
+const runOutput = (r: CronRun) => r.output ?? r.summary ?? r['result'] ?? r['text'] ?? (r.error ? `**Error:** ${r.error}` : "");
 
 function JobPage() {
   const { jobId } = Route.useParams();

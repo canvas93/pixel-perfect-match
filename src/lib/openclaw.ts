@@ -139,7 +139,7 @@ export async function streamReply(opts: {
           ...(system ? { instructions: system } : {}),
           input: toResponsesInput(history),
         }),
-        signal,
+        signal: signal ?? null,
       });
     } else {
       const messages = toChatCompletionMessages(history);
@@ -152,7 +152,7 @@ export async function streamReply(opts: {
           stream: true,
           messages: system ? [{ role: "system", content: system }, ...messages] : messages,
         }),
-        signal,
+        signal: signal ?? null,
       });
     }
   } catch (e) {
