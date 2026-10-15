@@ -107,7 +107,7 @@ export function ChatPanel({
         <div className={cn("mx-auto w-full max-w-3xl px-4", compact ? "py-4" : "py-6")}>
           {messages.length === 0 && (emptyState ?? (
             <div className="flex flex-col items-center pt-[18vh] text-center">
-              <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground">🦞</div>
+              <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground">C</div>
               <h1 className="text-2xl font-bold tracking-tight">What can {AGENTS.find((a) => a.id === agent)?.label} help with?</h1>
               <p className="mt-2 text-sm text-muted-foreground">Attach images or documents, ask for tables or charts.</p>
             </div>

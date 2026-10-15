@@ -55,6 +55,7 @@ async function readError(res: Response): Promise<ApiError> {
         : res.status === 401 || res.status === 403
           ? `Not authorized (${res.status}).`
           : `Request failed (${res.status}).`;
+  if (/^\s*</.test(String(detail))) detail = "";
   return new ApiError(res.status, detail ? `${base} ${String(detail).slice(0, 300)}` : base);
 }
 

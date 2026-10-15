@@ -51,7 +51,7 @@ export function AppSidebar() {
       >
         <div className="flex h-14 items-center justify-between px-3">
           <Link to="/" className="flex items-center gap-2 px-1 font-bold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-lg bg-sidebar-primary text-sm">🦞</span> OpenClaw
+            <span className="grid size-7 place-items-center rounded-lg bg-sidebar-primary text-sm">C</span> OpenClaw
           </Link>
           <button onClick={() => setOpen(false)} className="grid size-8 place-items-center rounded-lg hover:bg-sidebar-accent" aria-label="Close sidebar">
             <PanelLeft className="size-4" />
