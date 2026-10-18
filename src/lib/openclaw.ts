@@ -19,8 +19,8 @@ export type Attachment = {
   mime: string;
   dataUrl: string; // base64 data URL
   id?: string;
-  size?: number;
-  createdAt?: number;
+  size?: number | undefined;
+  createdAt?: number | undefined;
   url?: string;
 };
 
@@ -30,7 +30,7 @@ export type ChatMsg = {
   content: string;
   attachments?: Attachment[] | undefined;
   error?: string | undefined;
-  createdAt?: number;
+  createdAt?: number | undefined;
   agent?: string;
 };
 

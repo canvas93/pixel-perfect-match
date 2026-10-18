@@ -155,3 +155,7 @@
 
 @keyframes blink { 0%, 100% { opacity: 0.2 } 50% { opacity: 1 } }
 .typing-dot { animation: blink 1.2s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
