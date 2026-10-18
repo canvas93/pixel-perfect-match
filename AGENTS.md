@@ -15,3 +15,4 @@
 - Collect files on attachment upload and reply completion, never by rescanning saved chats; this avoids repeated streaming uploads and resurrecting deleted server files.
 - Keep comparison histories separate and tag assistant replies with their agent; use independent session IDs to prevent cross-agent context leakage.
 - Compose chat transcripts and input with AI Elements, retaining domain-specific attachment collection and chart rendering around those primitives.
+- Picker values containing "/" are raw model ids sent unchanged; bare ids are OpenClaw agents mapped to openclaw/<id> — one field drives both without a schema change.
