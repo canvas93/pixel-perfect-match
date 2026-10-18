@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { ChatMsg } from "./openclaw";
+import { collectAssets, saveAssets } from "./assets";
+import { toast } from "sonner";
 
 export type Thread = {
   id: string;
@@ -7,6 +9,9 @@ export type Thread = {
   agent: string;
   updatedAt: number;
   messages: ChatMsg[];
+  comparisonMessages?: ChatMsg[];
+  comparisonAgent?: string;
+  splitEnabled?: boolean;
   /** Set for follow-up chats about an automation job */
   jobId?: string;
 };
@@ -30,6 +35,8 @@ function load(): Thread[] {
 
 function save(next: Thread[]) {
   cache = next;
+  const assets = next.flatMap((t) => collectAssets(t));
+  if (assets.length) void saveAssets(assets).catch(() => toast.error("The vault could not save these files. Your browser storage may be full."));
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {

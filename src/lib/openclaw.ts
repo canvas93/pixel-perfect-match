@@ -18,6 +18,10 @@ export type Attachment = {
   name: string;
   mime: string;
   dataUrl: string; // base64 data URL
+  id?: string;
+  size?: number;
+  createdAt?: number;
+  url?: string;
 };
 
 export type ChatMsg = {
@@ -26,6 +30,8 @@ export type ChatMsg = {
   content: string;
   attachments?: Attachment[] | undefined;
   error?: string | undefined;
+  createdAt?: number;
+  agent?: string;
 };
 
 export class ApiError extends Error {
@@ -124,6 +130,7 @@ export async function streamReply(opts: {
   system?: string | undefined;
   signal?: AbortSignal;
   onDelta: (text: string) => void;
+  onAssets?: (assets: Attachment[]) => void;
 }) {
   const { agent, sessionId, history, signal, onDelta, system } = opts;
   const hasDocs = history.some((m) => m.attachments?.some((a) => !a.mime.startsWith("image/")));
@@ -169,6 +176,7 @@ export async function streamReply(opts: {
   if (!ct.includes("event-stream")) {
     // Non-streaming fallback
     const j = await res.json();
+    opts.onAssets?.(responseAssets(j));
     const text =
       j?.choices?.[0]?.message?.content ??
       j?.output_text ??
@@ -188,6 +196,7 @@ export async function streamReply(opts: {
         continue;
       }
       if (j.error) throw new ApiError(500, j.error.message ?? String(j.error));
+      opts.onAssets?.(responseAssets(j));
       const type = j.type ?? event;
       if (type === "response.output_text.delta" && j.delta) onDelta(j.delta);
       else if (type === "response.failed" || type === "error")
@@ -201,6 +210,17 @@ export async function streamReply(opts: {
     if ((e as Error).name === "AbortError" || e instanceof ApiError) throw e;
     throw new ApiError(0, "Connection dropped while streaming the reply.");
   }
+}
+
+/** File parts emitted by OpenClaw's chat or Responses API. */
+export function responseAssets(payload: any): Attachment[] {
+  const message = payload?.choices?.[0]?.message ?? payload?.choices?.[0]?.delta;
+  const parts = [...(payload?.attachments ?? []), ...(message?.attachments ?? []), ...(message?.images ?? []), ...(payload?.output ?? []).flatMap((o: any) => [o, ...(o.content ?? [])]), ...(payload?.item ? [payload.item, ...(payload.item.content ?? [])] : [])];
+  return parts.flatMap((part: any): Attachment[] => {
+    const url = part.url ?? part.file_url ?? part.image_url?.url;
+    if (typeof url !== "string" || !/^(https?:\/\/|\/(?!\/)|data:)/i.test(url)) return [];
+    return [{ name: part.filename ?? part.name ?? url.split(/[/?#]/).filter(Boolean).at(-1) ?? "Generated file", mime: part.mime_type ?? part.mime ?? "application/octet-stream", dataUrl: url.startsWith("data:") ? url : "", url, ...(typeof part.size === "number" ? { size: part.size } : {}) }];
+  });
 }
 
 /** Admin RPC call (/api/v1/admin/rpc). */
