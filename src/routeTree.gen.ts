@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VaultRouteImport } from './routes/vault'
 import { Route as AutomationsIndexRouteImport } from './routes/automations.index'
 import { Route as AutomationsJobIdRouteImport } from './routes/automations.$jobId'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
@@ -17,6 +18,11 @@ import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VaultRoute = VaultRouteImport.update({
+  id: '/vault',
+  path: '/vault',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AutomationsIndexRoute = AutomationsIndexRouteImport.update({
@@ -37,12 +43,14 @@ const CThreadIdRoute = CThreadIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/vault': typeof VaultRoute
   '/automations/$jobId': typeof AutomationsJobIdRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/automations/': typeof AutomationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/vault': typeof VaultRoute
   '/automations/$jobId': typeof AutomationsJobIdRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/automations': typeof AutomationsIndexRoute
@@ -50,21 +58,29 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/vault': typeof VaultRoute
   '/automations/$jobId': typeof AutomationsJobIdRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/automations/': typeof AutomationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/automations/$jobId' | '/c/$threadId' | '/automations/'
+  fullPaths:
+    '/' | '/vault' | '/automations/$jobId' | '/c/$threadId' | '/automations/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/automations/$jobId' | '/c/$threadId' | '/automations'
+  to: '/' | '/vault' | '/automations/$jobId' | '/c/$threadId' | '/automations'
   id:
-    '__root__' | '/' | '/automations/$jobId' | '/c/$threadId' | '/automations/'
+    | '__root__'
+    | '/'
+    | '/vault'
+    | '/automations/$jobId'
+    | '/c/$threadId'
+    | '/automations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  VaultRoute: typeof VaultRoute
   AutomationsJobIdRoute: typeof AutomationsJobIdRoute
   CThreadIdRoute: typeof CThreadIdRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
@@ -77,6 +93,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vault': {
+      id: '/vault'
+      path: '/vault'
+      fullPath: '/vault'
+      preLoaderRoute: typeof VaultRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/automations/': {
@@ -105,6 +128,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  VaultRoute: VaultRoute,
   AutomationsJobIdRoute: AutomationsJobIdRoute,
   CThreadIdRoute: CThreadIdRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,
