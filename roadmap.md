@@ -1,6 +1,7 @@
 # OpenClaw connection fixes
-- [ ] Replace IndexedDB Vault storage with existing OpenClaw/NAS REST listing, uploads, deletion, and direct downloads.
-- [ ] Verify server Vault requests and preserved search, sorting, metadata, and chat collection.
+- [x] Replace IndexedDB Vault storage with existing OpenClaw/NAS REST listing, uploads, deletion, and direct downloads.
+- [x] Verify Vault REST contract and preserved search, sorting, metadata, uploads, deletion, downloads, and second-device listing with controlled responses (27 tests passed).
+- [ ] Verify real NAS Vault storage — blocked by missing deployment API routing (GET /vault with JSON Accept returns HTTP 406); existing server must implement the documented REST contract. Legacy IndexedDB file migration is not included.
 - [x] Add an automatically collected, searchable asset vault with metadata and downloads.
 - [x] Add simultaneous split-view agent comparison with isolated histories and exports.
 - [x] Test the new workflow and inspect the chat and vault using controlled OpenClaw responses.
