@@ -20,11 +20,12 @@ function load(): Thread[] {
   if (cache) return cache;
   if (typeof window === "undefined") return EMPTY;
   try {
-    cache = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    cache = Array.isArray(stored) ? stored.map((t: Thread) => ({ ...t, agent: t.agent === "default" ? "adin" : t.agent })) : [];
   } catch {
     cache = [];
   }
-  return cache!;
+  return cache ?? EMPTY;
 }
 
 function save(next: Thread[]) {
@@ -51,12 +52,14 @@ export const threads = {
   all: load,
   get: (id: string) => load().find((t) => t.id === id),
   create(partial: Partial<Thread> = {}): Thread {
-    const t: Thread = { id: uid(), title: "New chat", agent: "default", updatedAt: Date.now(), messages: [], ...partial };
+    const t: Thread = { id: uid(), title: "New chat", agent: "adin", updatedAt: Date.now(), messages: [], ...partial };
     save([t, ...load()]);
     return t;
   },
   ensure(id: string, partial: Partial<Thread> = {}): Thread {
-    return threads.get(id) ?? (save([{ id, title: "New chat", agent: "default", updatedAt: Date.now(), messages: [], ...partial }, ...load()]), threads.get(id)!);
+    const existing = threads.get(id);
+    if (existing) return existing;
+    return threads.create({ ...partial, id });
   },
   update(id: string, fn: (t: Thread) => Thread) {
     save(load().map((t) => (t.id === id ? { ...fn(t), updatedAt: Date.now() } : t)));

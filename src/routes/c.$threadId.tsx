@@ -10,6 +10,8 @@ export const Route = createFileRoute("/c/$threadId")({
       { name: "description", content: "Conversation with an OpenClaw agent." },
       { property: "og:title", content: "Chat · OpenClaw" },
       { property: "og:description", content: "Conversation with an OpenClaw agent." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ThreadPage,

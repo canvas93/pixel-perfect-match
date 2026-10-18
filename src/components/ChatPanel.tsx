@@ -28,7 +28,7 @@ export function ChatPanel({
   const fileRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const messages = thread?.messages ?? [];
-  const agent = thread?.agent ?? "default";
+  const agent = thread?.agent ?? "adin";
 
   useEffect(() => { taRef.current?.focus(); }, [threadId, busy]);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [messages]);
@@ -109,7 +109,6 @@ export function ChatPanel({
             <div className="flex flex-col items-center pt-[18vh] text-center">
               <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground">C</div>
               <h1 className="text-2xl font-bold tracking-tight">What can {AGENTS.find((a) => a.id === agent)?.label} help with?</h1>
-              <p className="mt-2 text-sm text-muted-foreground">Attach images or documents, ask for tables or charts.</p>
             </div>
           ))}
           <div className="space-y-6">
