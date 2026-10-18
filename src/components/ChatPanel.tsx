@@ -15,7 +15,7 @@ import { ChartBlock, parseChartSpec } from "./ChartBlock";
 import { threads, useThread, uid } from "@/lib/threads";
 import { AGENTS, fileToDataUrl, streamReply, type Attachment, type ChatMsg } from "@/lib/openclaw";
 import { agentHistory } from "@/lib/comparison";
-import { collectAssets, downloadBlob, saveAssets } from "@/lib/assets";
+import { collectAssets, downloadBlob, saveAssets, retainGeneratedFiles } from "@/lib/assets";
 import { Button } from "@/components/ui/button";
 import {
   Conversation,
@@ -126,6 +126,7 @@ export function ChatPanel({
     } finally {
       setBusy(false);
       controllers.current = [];
+      void retainGeneratedFiles().catch(() => toast.error("Some generated files could not be retained in the vault."));
     }
   }
   function send() {
@@ -158,6 +159,7 @@ export function ChatPanel({
     } finally {
       setBusy(false);
       controllers.current = [];
+      void retainGeneratedFiles().catch(() => toast.error("Some generated files could not be retained in the vault."));
     }
   }
   async function addFiles(list: FileList | null) {

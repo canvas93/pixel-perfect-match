@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { agentHistory } from "@/lib/comparison";
-import { byteSize, collectAssets, filterAssets } from "@/lib/assets";
+import { byteSize, collectAssets, filterAssets, mergeAssets } from "@/lib/assets";
 import { responseAssets, streamReply, type ChatMsg } from "@/lib/openclaw";
 import type { Thread } from "@/lib/threads";
 afterEach(() => vi.unstubAllGlobals());
@@ -66,6 +66,13 @@ describe("Content workflow", () => {
     });
     expect(assets[0]?.createdAt).toBeUndefined();
     expect(assets[0]?.size).toBeUndefined();
+  });
+  it("keeps retained bytes, timestamp and size when rescanning chats or deleting them", () => {
+    const asset = collectAssets(thread)[1];
+    if (!asset) throw new Error("Missing generated asset");
+    const retained = { ...asset, size: 12, createdAt: 2000, dataUrl: "data:application/pdf;base64,YQ==" };
+    expect(mergeAssets([retained], [{ ...asset, size: undefined, createdAt: undefined }])[0]).toMatchObject({ size: 12, createdAt: 2000, dataUrl: "data:application/pdf;base64,YQ==" });
+    expect(mergeAssets([retained], [])).toEqual([retained]);
   });
   it("searches file names and precise dates and sorts timestamps", () => {
     const assets = collectAssets(thread);
