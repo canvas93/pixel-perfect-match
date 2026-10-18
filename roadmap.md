@@ -1,4 +1,7 @@
 # OpenClaw connection fixes
+- [ ] Add an automatically collected, searchable asset vault with metadata and downloads.
+- [ ] Add simultaneous split-view agent comparison with isolated histories and exports.
+- [ ] Test the new workflow and inspect the chat and vault.
 - [x] Open directly into chat without documentation text.
 - [x] Send selected agent IDs in chat payloads, including adin.
 - [x] Correct automation requests, response handling, and errors.
