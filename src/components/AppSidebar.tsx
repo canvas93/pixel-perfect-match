@@ -1,8 +1,9 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { MessageSquarePlus, PanelLeft, Timer, Trash2, Moon, Sun, MessageSquare } from "lucide-react";
+import { MessageSquarePlus, PanelLeft, Timer, Trash2, Moon, Sun, MessageSquare, Archive } from "lucide-react";
 import { useEffect, useState } from "react";
 import { threads, useThreads } from "@/lib/threads";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export function useTheme() {
   const [dark, setDark] = useState(true);
@@ -68,6 +69,9 @@ export function AppSidebar() {
           >
             <Timer className="size-4" /> Automations
           </Link>
+          <Button asChild variant="ghost" className={cn("w-full justify-start px-2.5 font-normal", path === "/vault" && "bg-sidebar-accent font-medium")}>
+            <Link to="/vault" onClick={closeOnMobile}><Archive className="size-4" /> Vault</Link>
+          </Button>
         </nav>
         <div className="mt-5 px-4 pb-1 text-xs font-medium text-muted-foreground">Chats</div>
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
