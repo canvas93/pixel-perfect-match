@@ -11,6 +11,7 @@
 
 - Keep OpenClaw requests browser-side and same-origin behind the deployment's authenticated reverse proxy; this preserves the existing backend rather than substituting another AI service.
 - Centralize cron request parameters and response normalization in the OpenClaw client so listing, history, and execution share consistent error handling.
-- Retain the deployment-owned browser storage architecture; store vault assets separately in IndexedDB so large files survive chat deletion without introducing another backend.
+- Keep chat text in deployment-owned browser storage, but centralize Vault REST calls in the browser-side vault-api client against the existing authenticated OpenClaw/NAS proxy; server-owned files enable multi-device access without substituting another backend.
+- Collect files on attachment upload and reply completion, never by rescanning saved chats; this avoids repeated streaming uploads and resurrecting deleted server files.
 - Keep comparison histories separate and tag assistant replies with their agent; use independent session IDs to prevent cross-agent context leakage.
 - Compose chat transcripts and input with AI Elements, retaining domain-specific attachment collection and chart rendering around those primitives.
