@@ -72,9 +72,6 @@ function VaultPage() {
       .finally(() => {
         if (active) setReady(true);
       });
-    return () => {
-      active = false;
-    };
     const onFocus = () => {
       void loadVault().then(() => { if (active) setError(""); }).catch((e: unknown) => {
         if (active) setError(e instanceof Error ? e.message : "Your server files could not be refreshed.");
