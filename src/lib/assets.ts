@@ -1,7 +1,13 @@
 import { useSyncExternalStore } from "react";
 import type { Attachment, ChatMsg } from "./openclaw";
 import type { Thread } from "./threads";
-import { deleteVaultAsset, listVaultAssets, serverAssetPath, uploadVaultAsset, type VaultAsset } from "./vault-api";
+import {
+  deleteVaultAsset,
+  listVaultAssets,
+  serverAssetPath,
+  uploadVaultAsset,
+  type VaultAsset,
+} from "./vault-api";
 export type { VaultAsset } from "./vault-api";
 
 const EMPTY: VaultAsset[] = [];

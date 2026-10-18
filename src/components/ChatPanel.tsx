@@ -119,7 +119,9 @@ export function ChatPanel({
         try {
           await saveAssets(collectAssets(current, [reply]));
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Generated files could not be uploaded to the Vault.");
+          toast.error(
+            e instanceof Error ? e.message : "Generated files could not be uploaded to the Vault.",
+          );
         }
       }
     }
@@ -178,7 +180,11 @@ export function ChatPanel({
         Array.from(list).map(async (f): Promise<Attachment> => {
           const dataUrl = await fileToDataUrl(f);
           const saved = await uploadFile(f, {
-            id: uid(), source: thread.title, threadId, origin: "attached", createdAt: Date.now(),
+            id: uid(),
+            source: thread.title,
+            threadId,
+            origin: "attached",
+            createdAt: Date.now(),
           });
           return { ...saved, dataUrl };
         }),

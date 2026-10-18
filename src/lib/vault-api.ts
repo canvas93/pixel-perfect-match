@@ -19,23 +19,42 @@ export function serverAssetPath(value: string) {
 function normalizeAsset(value: unknown): VaultAsset {
   if (!value || typeof value !== "object") throw new Error("Invalid Vault file metadata.");
   const a = value as Record<string, unknown>;
-  const name = a.name ?? a.filename;
-  if (typeof a.id !== "string" || !a.id || typeof name !== "string" || !name)
+  const name = a["name"] ?? a["filename"];
+  if (typeof a["id"] !== "string" || !a["id"] || typeof name !== "string" || !name)
     throw new Error("The Vault server returned a file without an ID or filename.");
-  const rawDate = a.createdAt ?? a.created_at ?? a.uploaded_at;
-  const date = typeof rawDate === "number" ? rawDate : typeof rawDate === "string" ? Date.parse(rawDate) : undefined;
-  const rawUrl = a.url ?? a.download_url ?? a.path;
+  const rawDate = a["createdAt"] ?? a["created_at"] ?? a["uploaded_at"];
+  const date =
+    typeof rawDate === "number"
+      ? rawDate
+      : typeof rawDate === "string"
+        ? Date.parse(rawDate)
+        : undefined;
+  const rawUrl = a["url"] ?? a["download_url"] ?? a["path"];
   return {
-    id: a.id,
+    id: a["id"],
     name,
-    mime: typeof (a.mime ?? a.mime_type) === "string" ? String(a.mime ?? a.mime_type) : "application/octet-stream",
-    size: typeof a.size === "number" && Number.isFinite(a.size) && a.size >= 0 ? a.size : undefined,
-    createdAt: date !== undefined && Number.isFinite(date) && Math.abs(date) <= 8640000000000000 ? date : undefined,
-    url: serverAssetPath(typeof rawUrl === "string" ? rawUrl : `${ENDPOINT}/${encodeURIComponent(name)}`),
+    mime:
+      typeof (a["mime"] ?? a["mime_type"]) === "string"
+        ? String(a["mime"] ?? a["mime_type"])
+        : "application/octet-stream",
+    size:
+      typeof a["size"] === "number" && Number.isFinite(a["size"]) && a["size"] >= 0
+        ? a["size"]
+        : undefined,
+    createdAt:
+      date !== undefined && Number.isFinite(date) && Math.abs(date) <= 8640000000000000
+        ? date
+        : undefined,
+    url: serverAssetPath(
+      typeof rawUrl === "string" ? rawUrl : `${ENDPOINT}/${encodeURIComponent(name)}`,
+    ),
     dataUrl: "",
-    source: typeof a.source === "string" ? a.source : "Vault upload",
-    threadId: typeof (a.threadId ?? a.thread_id) === "string" ? String(a.threadId ?? a.thread_id) : "",
-    origin: a.origin === "generated" ? "generated" : "attached",
+    source: typeof a["source"] === "string" ? a["source"] : "Vault upload",
+    threadId:
+      typeof (a["threadId"] ?? a["thread_id"]) === "string"
+        ? String(a["threadId"] ?? a["thread_id"])
+        : "",
+    origin: a["origin"] === "generated" ? "generated" : "attached",
   };
 }
 
@@ -59,29 +78,41 @@ async function request(path: string, init: RequestInit = {}) {
 
 async function json(res: Response): Promise<unknown> {
   if (!res.headers.get("content-type")?.includes("application/json"))
-    throw new Error("The Vault server returned a page instead of file data. Check the deployment’s Vault API routing.");
+    throw new Error(
+      "The Vault server returned a page instead of file data. Check the deployment’s Vault API routing.",
+    );
   return res.json();
 }
 
 export async function listVaultAssets() {
   const body = await json(await request(ENDPOINT));
-  const list = Array.isArray(body) ? body : body && typeof body === "object" ? (body as Record<string, unknown>).assets ?? (body as Record<string, unknown>).files : undefined;
+  const list = Array.isArray(body)
+    ? body
+    : body && typeof body === "object"
+      ? ((body as Record<string, unknown>)["assets"] ?? (body as Record<string, unknown>)["files"])
+      : undefined;
   if (!Array.isArray(list)) throw new Error("The Vault server returned an invalid file list.");
   return list.map(normalizeAsset);
 }
 
-export async function uploadVaultAsset(file: Blob, name: string, metadata: Partial<VaultAsset> = {}) {
+export async function uploadVaultAsset(
+  file: Blob,
+  name: string,
+  metadata: Partial<VaultAsset> = {},
+) {
   const form = new FormData();
   form.append("file", file, name);
   for (const key of ["id", "source", "threadId", "origin", "createdAt"] as const) {
     const value = metadata[key];
     if (value !== undefined) form.append(key, String(value));
   }
-  const body = await json(await request(ENDPOINT, {
-    method: "POST",
-    body: form,
-    headers: metadata.id ? { "Idempotency-Key": metadata.id } : {},
-  }));
+  const body = await json(
+    await request(ENDPOINT, {
+      method: "POST",
+      body: form,
+      headers: metadata.id ? { "Idempotency-Key": metadata.id } : {},
+    }),
+  );
   const value = body && typeof body === "object" && "asset" in body ? body.asset : body;
   return normalizeAsset(value);
 }

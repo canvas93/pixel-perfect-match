@@ -36,10 +36,11 @@ function load(): Thread[] {
 function save(next: Thread[]) {
   cache = next;
   // Chat text remains deployment-owned browser storage; file bytes live on the server.
-  const withoutBytes = (messages: ChatMsg[]) => messages.map((m) => ({
-    ...m,
-    attachments: m.attachments?.map((a) => ({ ...a, dataUrl: "" })),
-  }));
+  const withoutBytes = (messages: ChatMsg[]) =>
+    messages.map((m) => ({
+      ...m,
+      attachments: m.attachments?.map((a) => ({ ...a, dataUrl: "" })),
+    }));
   const stored = next.map((t) => ({
     ...t,
     messages: withoutBytes(t.messages),
