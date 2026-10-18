@@ -83,7 +83,18 @@ export const threads = {
   remove(id: string) {
     save(load().filter((t) => t.id !== id));
   },
+  /** Reuses the active chat when it has no messages; otherwise creates a new one. */
+  newChat(activeId?: string): Thread {
+    const active = activeId ? threads.get(activeId) : undefined;
+    if (active && !active.jobId && isEmptyThread(active)) return active;
+    return threads.create();
+  },
 };
+
+export const FOCUS_COMPOSER_EVENT = "openclaw:focus-composer";
+
+export const isEmptyThread = (t: Thread) =>
+  t.messages.length === 0 && (t.comparisonMessages?.length ?? 0) === 0;
 
 const subscribe = (l: () => void) => {
   listeners.add(l);

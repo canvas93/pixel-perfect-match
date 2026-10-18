@@ -10,7 +10,7 @@ import {
   Archive,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { threads, useThreads } from "@/lib/threads";
+import { FOCUS_COMPOSER_EVENT, threads, useThreads } from "@/lib/threads";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -40,9 +40,14 @@ export function AppSidebar() {
   const closeOnMobile = () => window.innerWidth < 768 && setOpen(false);
 
   const newChat = () => {
-    const t = threads.create();
-    navigate({ to: "/c/$threadId", params: { threadId: t.id } });
+    const activeId = path.startsWith("/c/") ? decodeURIComponent(path.slice(3)) : undefined;
+    const t = threads.newChat(activeId);
     closeOnMobile();
+    if (t.id === activeId) {
+      window.dispatchEvent(new Event(FOCUS_COMPOSER_EVENT));
+      return;
+    }
+    navigate({ to: "/c/$threadId", params: { threadId: t.id } });
   };
 
   return (
