@@ -85,19 +85,36 @@ export function ChatPanel({
       }));
     try {
       // Rehydrate prior attachments from the server only while composing an API request.
-      const requestHistory = await Promise.all(agentHistory(history, selected).map(async (m) => ({
-        ...m,
-        attachments: m.attachments ? await Promise.all(m.attachments.map(async (a) => {
-          if (a.dataUrl || !a.url) return a;
-          const url = new URL(a.url, window.location.origin);
-          if (url.origin !== window.location.origin) throw new Error("Chat attachments must come from your OpenClaw server.");
-          const res = await fetch(url.href, { credentials: "same-origin", signal: ctrl.signal });
-          if (!res.ok) throw new Error(`The attachment ${a.name} is no longer available (${res.status}).`);
-          const blob = await res.blob();
-          if (blob.type.includes("text/html") && !a.mime.includes("text/html")) throw new Error("The attachment server returned a page instead of a file.");
-          return { ...a, dataUrl: await fileToDataUrl(new File([blob], a.name, { type: a.mime })) };
-        })) : undefined,
-      })));
+      const requestHistory = await Promise.all(
+        agentHistory(history, selected).map(async (m) => ({
+          ...m,
+          attachments: m.attachments
+            ? await Promise.all(
+                m.attachments.map(async (a) => {
+                  if (a.dataUrl || !a.url) return a;
+                  const url = new URL(a.url, window.location.origin);
+                  if (url.origin !== window.location.origin)
+                    throw new Error("Chat attachments must come from your OpenClaw server.");
+                  const res = await fetch(url.href, {
+                    credentials: "same-origin",
+                    signal: ctrl.signal,
+                  });
+                  if (!res.ok)
+                    throw new Error(
+                      `The attachment ${a.name} is no longer available (${res.status}).`,
+                    );
+                  const blob = await res.blob();
+                  if (blob.type.includes("text/html") && !a.mime.includes("text/html"))
+                    throw new Error("The attachment server returned a page instead of a file.");
+                  return {
+                    ...a,
+                    dataUrl: await fileToDataUrl(new File([blob], a.name, { type: a.mime })),
+                  };
+                }),
+              )
+            : undefined,
+        })),
+      );
       await streamReply({
         agent: selected,
         sessionId: `${threadId}:${lane}:${selected}`,
