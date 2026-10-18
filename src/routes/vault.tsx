@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Archive, Download, FileText, Image, Music, Search, Loader2, Film } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Archive, Download, FileText, Image, Music, Search, Loader2, Film, Upload, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,18 +12,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  collectAssets,
-  downloadAsset,
+  deleteAsset,
+  downloadAssetPath,
   filterAssets,
   formatBytes,
   loadVault,
-  retainGeneratedFiles,
-  saveAssets,
+  uploadFile,
   useVault,
   type AssetSort,
   type VaultAsset,
 } from "@/lib/assets";
-import { useThreads } from "@/lib/threads";
 
 export const Route = createFileRoute("/vault")({
   head: () => ({
@@ -46,22 +44,30 @@ export const Route = createFileRoute("/vault")({
 });
 
 function VaultPage() {
-  const list = useThreads();
   const assets = useVault();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<AssetSort>("newest");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  async function refresh() {
+    setReady(false);
+    setError("");
+    try {
+      await loadVault();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Your server files could not be loaded.");
+    } finally {
+      setReady(true);
+    }
+  }
   useEffect(() => {
     let active = true;
     void loadVault()
-      .then(() => saveAssets(list.flatMap((t) => collectAssets(t))))
-      .then(() => retainGeneratedFiles())
-      .catch(() => {
+      .catch((e: unknown) => {
         if (active)
-          setError(
-            "Your saved files could not be loaded. Check that browser storage is available.",
-          );
+          setError(e instanceof Error ? e.message : "Your server files could not be loaded.");
       })
       .finally(() => {
         if (active) setReady(true);
@@ -69,7 +75,17 @@ function VaultPage() {
     return () => {
       active = false;
     };
-  }, [list]);
+    const onFocus = () => {
+      void loadVault().then(() => { if (active) setError(""); }).catch((e: unknown) => {
+        if (active) setError(e instanceof Error ? e.message : "Your server files could not be refreshed.");
+      });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
   const filtered = filterAssets(assets, query, sort);
   return (
     <div className="flex h-full flex-col overflow-y-auto">
@@ -104,6 +120,27 @@ function VaultPage() {
               <SelectItem value="name">File name A–Z</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" size="icon" title="Refresh files" aria-label="Refresh files" disabled={!ready || uploading} onClick={() => void refresh()}>
+            <RotateCcw className="size-4" />
+          </Button>
+          <Button disabled={uploading} onClick={() => fileRef.current?.click()}>
+            {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            Upload
+          </Button>
+          <input ref={fileRef} type="file" multiple className="hidden" aria-label="Upload files to Vault" onChange={async (e) => {
+            const files = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            if (!files.length) return;
+            setUploading(true);
+            try {
+              for (const file of files) await uploadFile(file, { origin: "attached" });
+              await refresh();
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Upload failed.");
+            } finally {
+              setUploading(false);
+            }
+          }} />
         </div>
         {error && (
           <p role="alert" className="mb-4 text-sm text-destructive">
@@ -114,7 +151,7 @@ function VaultPage() {
           <div className="py-16 text-center text-muted-foreground">
             <Loader2 className="mx-auto size-6 animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : error && assets.length === 0 ? null : filtered.length === 0 ? (
           <div className="py-20 text-center">
             <Archive className="mx-auto mb-4 size-10 text-muted-foreground" />
             <h2 className="text-lg font-semibold">
@@ -123,7 +160,7 @@ function VaultPage() {
           </div>
         ) : (
           <>
-            <div className="hidden grid-cols-[minmax(0,2fr)_1fr_1fr_minmax(180px,1.5fr)_40px] gap-4 border-b px-3 pb-3 text-xs font-medium uppercase text-muted-foreground lg:grid">
+            <div className="hidden grid-cols-[minmax(0,2fr)_1fr_1fr_minmax(180px,1.5fr)_88px] gap-4 border-b px-3 pb-3 text-xs font-medium uppercase text-muted-foreground lg:grid">
               <span>File / conversation</span>
               <span>Type</span>
               <span>Size</span>
@@ -150,20 +187,20 @@ function AssetRow({ asset }: { asset: VaultAsset }) {
         ? Film
         : FileText;
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_40px] items-center gap-3 border-b px-3 py-4 lg:grid-cols-[minmax(0,2fr)_1fr_1fr_minmax(180px,1.5fr)_40px] lg:gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)_88px] items-center gap-3 border-b px-3 py-4 lg:grid-cols-[minmax(0,2fr)_1fr_1fr_minmax(180px,1.5fr)_88px] lg:gap-4">
       <div className="flex min-w-0 items-center gap-3">
         <div className="grid size-10 shrink-0 place-items-center rounded-md bg-secondary text-primary">
           <Icon className="size-5" />
         </div>
         <div className="min-w-0">
           <p className="break-all text-sm font-medium">{asset.name}</p>
-          <Link
+          {asset.threadId ? <Link
             to="/c/$threadId"
             params={{ threadId: asset.threadId }}
             className="block truncate text-xs text-muted-foreground hover:text-primary"
           >
             {asset.source}
-          </Link>
+          </Link> : <p className="truncate text-xs text-muted-foreground">{asset.source}</p>}
         </div>
       </div>
       <span className="col-start-1 text-xs text-muted-foreground lg:col-auto">
@@ -192,26 +229,37 @@ function AssetRow({ asset }: { asset: VaultAsset }) {
           "Timestamp unavailable (older file)"
         )}
       </span>
+      <div className="col-start-2 row-start-1 flex items-center gap-2 lg:col-auto lg:row-auto">
+      <Button
+        asChild
+        variant="ghost"
+        size="icon"
+        title={`Download ${asset.name}`}
+        aria-label={`Download ${asset.name}`}
+      >
+        <a href={downloadAssetPath(asset)} download={asset.name}><Download /></a>
+      </Button>
       <Button
         variant="ghost"
         size="icon"
-        className="col-start-2 row-start-1 lg:col-auto lg:row-auto"
         disabled={busy}
-        title={`Download ${asset.name}`}
-        aria-label={`Download ${asset.name}`}
+        title={`Delete ${asset.name}`}
+        aria-label={`Delete ${asset.name}`}
         onClick={async () => {
+          if (!window.confirm(`Delete ${asset.name} from the Vault?`)) return;
           setBusy(true);
           try {
-            await downloadAsset(asset);
+            await deleteAsset(asset);
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Download failed.");
+            toast.error(e instanceof Error ? e.message : "Delete failed.");
           } finally {
             setBusy(false);
           }
         }}
       >
-        {busy ? <Loader2 className="animate-spin" /> : <Download />}
+        {busy ? <Loader2 className="animate-spin" /> : <Trash2 className="text-destructive" />}
       </Button>
+      </div>
     </div>
   );
 }
