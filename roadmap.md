@@ -1,5 +1,6 @@
 # OpenClaw connection fixes
-- [ ] Open directly into chat without documentation text.
-- [ ] Send selected agent IDs in chat payloads, including adin.
-- [ ] Correct automation requests, response handling, and errors.
-- [ ] Test payload rules and verify the app flow; report backend availability.
+- [x] Open directly into chat without documentation text.
+- [x] Send selected agent IDs in chat payloads, including adin.
+- [x] Correct automation requests, response handling, and errors.
+- [x] Test payload rules and verify chat, history, and manual execution with controlled responses (11 tests passed).
+- [ ] Verify real OpenClaw replies and automation execution — blocked by missing backend routing in this preview (chat HTTP 406; admin RPC HTTP 404); requires the user's OpenClaw deployment connection.
