@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, Loader2, MessagesSquare, Play } from "lucide-react";
 import { toast } from "sonner";
-import { asArray, fmtTime, rpc, scheduleText, type CronJob, type CronRun } from "@/lib/openclaw";
+import { fmtTime, listCronJobs, listCronRuns, runCronJob, scheduleText, type CronRun } from "@/lib/openclaw";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Markdown } from "@/components/Markdown";
 import { ChatPanel } from "@/components/ChatPanel";
@@ -18,6 +19,8 @@ export const Route = createFileRoute("/automations/$jobId")({
       { name: "description", content: "Run history, output and follow-up Q&A for an OpenClaw automation." },
       { property: "og:title", content: "Job workspace · OpenClaw" },
       { property: "og:description", content: "Run history, output and follow-up Q&A for an OpenClaw automation." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: JobPage,
@@ -33,24 +36,23 @@ function JobPage() {
 
   const jobs = useQuery({
     queryKey: ["cron.list"],
-    queryFn: async () => asArray<CronJob>(await rpc("cron.list", { includeDisabled: true }), "jobs"),
-    retry: 1,
+    queryFn: listCronJobs,
+    retry: false,
   });
   const job = jobs.data?.find((j) => j.id === jobId);
 
   const runs = useQuery({
     queryKey: ["cron.runs", jobId],
     queryFn: async () => {
-      const list = asArray<CronRun>(await rpc("cron.runs", { id: jobId, jobId, limit: 50 }), "entries");
-      const fallback = list.length ? list : [];
-      return [...fallback].sort((a, b) => Number(b.ts ?? new Date(b.startedAt ?? 0).getTime()) - Number(a.ts ?? new Date(a.startedAt ?? 0).getTime()));
+      const list = await listCronRuns(jobId);
+      return [...list].sort((a, b) => Number(b.ts ?? new Date(b.startedAt ?? 0).getTime()) - Number(a.ts ?? new Date(a.startedAt ?? 0).getTime()));
     },
     refetchInterval: 20000,
-    retry: 1,
+    retry: false,
   });
 
   const trigger = useMutation({
-    mutationFn: () => rpc("cron.run", { id: jobId, jobId, mode: "force" }),
+    mutationFn: () => runCronJob(jobId),
     onSuccess: () => {
       toast.success("Job triggered");
       setTimeout(() => { qc.invalidateQueries({ queryKey: ["cron.runs", jobId] }); qc.invalidateQueries({ queryKey: ["cron.list"] }); }, 1500);
@@ -66,7 +68,8 @@ function JobPage() {
   // One follow-up Q&A thread per job
   const qaId = `job-${jobId}`;
   useEffect(() => {
-    threads.ensure(qaId, { jobId, title: `Q&A: ${jobId}`, agent: job?.agentId ?? "default" });
+    threads.ensure(qaId, { jobId, title: `Q&A: ${jobId}`, agent: job?.agentId ?? "adin" });
+    if (job?.agentId) threads.update(qaId, (t) => ({ ...t, agent: job.agentId ?? "adin" }));
   }, [qaId, jobId, job?.agentId]);
 
   const system = selected
@@ -89,18 +92,18 @@ function JobPage() {
                 <span>Next: {fmtTime(job?.state?.nextRunAtMs ?? job?.nextRunAt)}</span>
               </div>
             </div>
-            <button
+            <Button
               onClick={() => trigger.mutate()}
               disabled={trigger.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
               {trigger.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />} Run now
-            </button>
+            </Button>
           </div>
 
-          {runs.isError && (
+          {(runs.isError || jobs.isError) && (
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {(runs.error as Error).message}
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {(runs.error ?? jobs.error)?.message}
             </div>
           )}
 
@@ -114,7 +117,7 @@ function JobPage() {
                   const k = runKey(r, i);
                   const active = selected === r;
                   return (
-                    <button key={k} onClick={() => setSel(k)} className={cn("w-full rounded-lg border px-3 py-2 text-left text-xs hover:bg-accent", active ? "border-primary/50 bg-accent" : "border-transparent")}>
+                     <Button variant="ghost" key={k} onClick={() => setSel(k)} className={cn("h-auto w-full flex-col items-start whitespace-normal rounded-lg border px-3 py-2 text-left text-xs hover:bg-accent", active ? "border-primary/50 bg-accent" : "border-transparent")}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{fmtTime(r.ts ?? r.startedAt)}</span>
                       </div>
@@ -122,7 +125,7 @@ function JobPage() {
                         <StatusBadge status={r.status ?? r['action']} />
                         {r.durationMs != null && <span className="text-muted-foreground">{(r.durationMs / 1000).toFixed(1)}s</span>}
                       </div>
-                    </button>
+                     </Button>
                   );
                 })}
               </div>

@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ChevronRight, Loader2, RefreshCw, Timer } from "lucide-react";
-import { asArray, fmtTime, rpc, scheduleText, type CronJob } from "@/lib/openclaw";
+import { fmtTime, listCronJobs, scheduleText, type CronJob } from "@/lib/openclaw";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/automations/")({
   head: () => ({
@@ -11,6 +12,8 @@ export const Route = createFileRoute("/automations/")({
       { name: "description", content: "Scheduled OpenClaw jobs, their status, last and next runs." },
       { property: "og:title", content: "Automations · OpenClaw" },
       { property: "og:description", content: "Scheduled OpenClaw jobs, their status, last and next runs." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Automations,
@@ -22,9 +25,9 @@ export const jobStatus = (j: CronJob) =>
 function Automations() {
   const q = useQuery({
     queryKey: ["cron.list"],
-    queryFn: async () => asArray<CronJob>(await rpc("cron.list", { includeDisabled: true }), "jobs"),
+    queryFn: listCronJobs,
     refetchInterval: 30000,
-    retry: 1,
+    retry: false,
   });
 
   return (
@@ -35,9 +38,9 @@ function Automations() {
             <h1 className="text-2xl font-bold tracking-tight">Automations</h1>
             <p className="text-sm text-muted-foreground">Scheduled jobs running on your OpenClaw server.</p>
           </div>
-          <button onClick={() => q.refetch()} className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm hover:bg-accent">
+          <Button variant="outline" onClick={() => q.refetch()} disabled={q.isFetching}>
             <RefreshCw className={`size-4 ${q.isFetching ? "animate-spin" : ""}`} /> Refresh
-          </button>
+          </Button>
         </div>
 
         {q.isLoading ? (
@@ -47,7 +50,7 @@ function Automations() {
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <div><div className="font-semibold">Couldn't load automations</div><div>{(q.error as Error).message}</div></div>
           </div>
-        ) : q.data!.length === 0 ? (
+        ) : (q.data ?? []).length === 0 ? (
           <div className="rounded-xl border border-dashed py-16 text-center text-muted-foreground">
             <Timer className="mx-auto mb-2 size-6" /> No scheduled jobs yet.
           </div>
@@ -56,7 +59,7 @@ function Automations() {
             <div className="hidden grid-cols-[1.6fr_1.2fr_1fr_1fr_auto_auto] gap-4 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground md:grid">
               <span>Job</span><span>Schedule</span><span>Last run</span><span>Next run</span><span>Status</span><span />
             </div>
-            {q.data!.map((j) => (
+            {(q.data ?? []).map((j) => (
               <Link
                 key={j.id}
                 to="/automations/$jobId"
