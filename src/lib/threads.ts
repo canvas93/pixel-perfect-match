@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { ChatMsg } from "./openclaw";
+import { collectAssets, saveAssets } from "./assets";
+import { toast } from "sonner";
 
 export type Thread = {
   id: string;
@@ -7,6 +9,9 @@ export type Thread = {
   agent: string;
   updatedAt: number;
   messages: ChatMsg[];
+  comparisonMessages?: ChatMsg[];
+  comparisonAgent?: string;
+  splitEnabled?: boolean;
   /** Set for follow-up chats about an automation job */
   jobId?: string;
 };
@@ -21,7 +26,9 @@ function load(): Thread[] {
   if (typeof window === "undefined") return EMPTY;
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) ?? "[]");
-    cache = Array.isArray(stored) ? stored.map((t: Thread) => ({ ...t, agent: t.agent === "default" ? "adin" : t.agent })) : [];
+    cache = Array.isArray(stored)
+      ? stored.map((t: Thread) => ({ ...t, agent: t.agent === "default" ? "adin" : t.agent }))
+      : [];
   } catch {
     cache = [];
   }
@@ -30,6 +37,11 @@ function load(): Thread[] {
 
 function save(next: Thread[]) {
   cache = next;
+  const assets = next.flatMap((t) => collectAssets(t));
+  if (assets.length)
+    void saveAssets(assets).catch(() =>
+      toast.error("The vault could not save these files. Your browser storage may be full."),
+    );
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {
@@ -41,18 +53,28 @@ function save(next: Thread[]) {
         attachments: m.attachments?.map((a) => ({ ...a, dataUrl: "" })),
       })),
     }));
-    try { localStorage.setItem(KEY, JSON.stringify(slim)); } catch {}
+    try {
+      localStorage.setItem(KEY, JSON.stringify(slim));
+    } catch {}
   }
   listeners.forEach((l) => l());
 }
 
-export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+export const uid = () =>
+  Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 export const threads = {
   all: load,
   get: (id: string) => load().find((t) => t.id === id),
   create(partial: Partial<Thread> = {}): Thread {
-    const t: Thread = { id: uid(), title: "New chat", agent: "adin", updatedAt: Date.now(), messages: [], ...partial };
+    const t: Thread = {
+      id: uid(),
+      title: "New chat",
+      agent: "adin",
+      updatedAt: Date.now(),
+      messages: [],
+      ...partial,
+    };
     save([t, ...load()]);
     return t;
   },
@@ -72,10 +94,16 @@ export const threads = {
 const subscribe = (l: () => void) => {
   listeners.add(l);
   const onStorage = (e: StorageEvent) => {
-    if (e.key === KEY) { cache = null; l(); }
+    if (e.key === KEY) {
+      cache = null;
+      l();
+    }
   };
   window.addEventListener("storage", onStorage);
-  return () => { listeners.delete(l); window.removeEventListener("storage", onStorage); };
+  return () => {
+    listeners.delete(l);
+    window.removeEventListener("storage", onStorage);
+  };
 };
 
 export function useThreads(): Thread[] {
