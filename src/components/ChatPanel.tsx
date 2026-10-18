@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { AgentSelect } from "./AgentSelect";
 import { ChartBlock, parseChartSpec } from "./ChartBlock";
-import { threads, useThread, uid } from "@/lib/threads";
+import { FOCUS_COMPOSER_EVENT, threads, useThread, uid } from "@/lib/threads";
 import { AGENTS, fileToDataUrl, streamReply, type Attachment, type ChatMsg } from "@/lib/openclaw";
 import { agentHistory } from "@/lib/comparison";
 import { collectAssets, downloadBlob, saveAssets, uploadFile } from "@/lib/assets";
@@ -62,6 +62,11 @@ export function ChatPanel({
   useEffect(() => {
     taRef.current?.focus();
   }, [threadId, busy]);
+  useEffect(() => {
+    const focus = () => taRef.current?.focus();
+    window.addEventListener(FOCUS_COMPOSER_EVENT, focus);
+    return () => window.removeEventListener(FOCUS_COMPOSER_EVENT, focus);
+  }, []);
   useEffect(() => () => controllers.current.forEach((c) => c.abort()), [threadId]);
 
   async function runLane(history: ChatMsg[], selected: string, lane: "left" | "right") {

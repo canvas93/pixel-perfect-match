@@ -12,7 +12,35 @@ export const AGENTS = [
 ] as const;
 
 export type AgentId = (typeof AGENTS)[number]["id"];
-export const modelFor = (agent: string) => `openclaw/${agent === "default" ? "adin" : agent}`;
+/** Agent IDs map to openclaw/<id>; values containing "/" are raw model strings sent as-is. */
+export const isRawModel = (agent: string) => agent.includes("/");
+export const modelFor = (agent: string) =>
+  isRawModel(agent) ? agent : `openclaw/${agent === "default" ? "adin" : agent}`;
+export const labelFor = (agent: string) =>
+  AGENTS.find((a) => a.id === agent)?.label ?? agent;
+
+/** Lists raw (non-OpenClaw-agent) models from the backend's /v1/models. */
+export async function listModels(signal?: AbortSignal): Promise<string[]> {
+  let res: Response;
+  try {
+    res = await fetch("/v1/models", { headers: { Accept: "application/json" }, signal: signal ?? null });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new ApiError(0, "Network error — could not load models.");
+  }
+  if (!res.ok) throw await readError(res);
+  let j: any;
+  try {
+    j = await res.json();
+  } catch {
+    throw new ApiError(res.status, "Model list returned an invalid response.");
+  }
+  const list: any[] = Array.isArray(j) ? j : Array.isArray(j?.data) ? j.data : Array.isArray(j?.models) ? j.models : [];
+  const ids = list
+    .map((m) => (typeof m === "string" ? m : m?.id))
+    .filter((id): id is string => typeof id === "string" && id.length > 0 && !id.startsWith("openclaw/"));
+  return [...new Set(ids)].sort((a, b) => a.localeCompare(b));
+}
 
 export type Attachment = {
   name: string;
