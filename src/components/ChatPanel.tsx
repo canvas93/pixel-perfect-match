@@ -15,7 +15,7 @@ import { ChartBlock, parseChartSpec } from "./ChartBlock";
 import { threads, useThread, uid } from "@/lib/threads";
 import { AGENTS, fileToDataUrl, streamReply, type Attachment, type ChatMsg } from "@/lib/openclaw";
 import { agentHistory } from "@/lib/comparison";
-import { collectAssets, downloadBlob, saveAssets, retainGeneratedFiles } from "@/lib/assets";
+import { collectAssets, downloadBlob, saveAssets, uploadFile } from "@/lib/assets";
 import { Button } from "@/components/ui/button";
 import {
   Conversation,
@@ -112,6 +112,16 @@ export function ChatPanel({
         error: aborted ? undefined : e instanceof Error ? e.message : "Request failed.",
         content: acc || (aborted ? "_Stopped._" : ""),
       }));
+    } finally {
+      const current = threads.get(threadId);
+      const reply = current?.[key]?.find((m) => m.id === assistantId);
+      if (current && reply) {
+        try {
+          await saveAssets(collectAssets(current, [reply]));
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Generated files could not be uploaded to the Vault.");
+        }
+      }
     }
   }
 
@@ -126,9 +136,6 @@ export function ChatPanel({
     } finally {
       setBusy(false);
       controllers.current = [];
-      void retainGeneratedFiles().catch(() =>
-        toast.error("Some generated files could not be retained in the vault."),
-      );
     }
   }
   function send() {
@@ -161,9 +168,6 @@ export function ChatPanel({
     } finally {
       setBusy(false);
       controllers.current = [];
-      void retainGeneratedFiles().catch(() =>
-        toast.error("Some generated files could not be retained in the vault."),
-      );
     }
   }
   async function addFiles(list: FileList | null) {
@@ -171,21 +175,17 @@ export function ChatPanel({
     setUploading(true);
     try {
       const next = await Promise.all(
-        Array.from(list).map(async (f): Promise<Attachment> => ({
-          id: uid(),
-          name: f.name,
-          mime: f.type || "application/octet-stream",
-          size: f.size,
-          createdAt: Date.now(),
-          dataUrl: await fileToDataUrl(f),
-        })),
-      );
-      await saveAssets(
-        collectAssets(thread, [{ id: uid(), role: "user", content: "", attachments: next }]),
+        Array.from(list).map(async (f): Promise<Attachment> => {
+          const dataUrl = await fileToDataUrl(f);
+          const saved = await uploadFile(f, {
+            id: uid(), source: thread.title, threadId, origin: "attached", createdAt: Date.now(),
+          });
+          return { ...saved, dataUrl };
+        }),
       );
       setFiles((p) => [...p, ...next]);
-    } catch {
-      toast.error("The files could not be saved. Check your browser storage and try again.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "The files could not be uploaded to the Vault.");
     } finally {
       setUploading(false);
     }

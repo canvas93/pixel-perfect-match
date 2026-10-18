@@ -1,7 +1,5 @@
 import { useSyncExternalStore } from "react";
 import type { ChatMsg } from "./openclaw";
-import { collectAssets, saveAssets } from "./assets";
-import { toast } from "sonner";
 
 export type Thread = {
   id: string;
@@ -37,25 +35,20 @@ function load(): Thread[] {
 
 function save(next: Thread[]) {
   cache = next;
-  const assets = next.flatMap((t) => collectAssets(t));
-  if (assets.length)
-    void saveAssets(assets).catch(() =>
-      toast.error("The vault could not save these files. Your browser storage may be full."),
-    );
+  // Chat text remains deployment-owned browser storage; file bytes live on the server.
+  const withoutBytes = (messages: ChatMsg[]) => messages.map((m) => ({
+    ...m,
+    attachments: m.attachments?.map((a) => ({ ...a, dataUrl: "" })),
+  }));
+  const stored = next.map((t) => ({
+    ...t,
+    messages: withoutBytes(t.messages),
+    comparisonMessages: t.comparisonMessages ? withoutBytes(t.comparisonMessages) : undefined,
+  }));
   try {
-    localStorage.setItem(KEY, JSON.stringify(next));
+    localStorage.setItem(KEY, JSON.stringify(stored));
   } catch {
-    // quota exceeded (large attachments) — strip attachment data and retry
-    const slim = next.map((t) => ({
-      ...t,
-      messages: t.messages.map((m) => ({
-        ...m,
-        attachments: m.attachments?.map((a) => ({ ...a, dataUrl: "" })),
-      })),
-    }));
-    try {
-      localStorage.setItem(KEY, JSON.stringify(slim));
-    } catch {}
+    // Keep the active conversation available if browser chat storage is full.
   }
   listeners.forEach((l) => l());
 }

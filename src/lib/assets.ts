@@ -1,19 +1,13 @@
-import { get, set } from "idb-keyval";
 import { useSyncExternalStore } from "react";
 import type { Attachment, ChatMsg } from "./openclaw";
 import type { Thread } from "./threads";
+import { deleteVaultAsset, listVaultAssets, serverAssetPath, uploadVaultAsset, type VaultAsset } from "./vault-api";
+export type { VaultAsset } from "./vault-api";
 
-export type VaultAsset = Attachment & {
-  id: string;
-  source: string;
-  threadId: string;
-  origin: "attached" | "generated";
-};
-const KEY = "openclaw.vault.v1";
 const EMPTY: VaultAsset[] = [];
 let cache: VaultAsset[] = EMPTY;
-let loaded = false;
 let queue = Promise.resolve();
+const collected = new Set<string>();
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 export function mergeAssets(existing: VaultAsset[], entries: VaultAsset[]) {
@@ -31,55 +25,52 @@ export function mergeAssets(existing: VaultAsset[], entries: VaultAsset[]) {
   return [...byId.values()];
 }
 export async function loadVault() {
-  if (loaded) return;
-  const saved = await get<VaultAsset[]>(KEY);
-  cache = Array.isArray(saved) ? saved : [];
-  loaded = true;
+  await queue.catch(() => {});
+  cache = await listVaultAssets();
   emit();
 }
 export function saveAssets(entries: VaultAsset[]) {
   queue = queue
     .catch(() => {})
     .then(async () => {
-      await loadVault();
-      const next = mergeAssets(cache, entries);
-      await set(KEY, next);
-      cache = next;
-      emit();
+      for (const asset of entries) {
+        if (collected.has(asset.id)) continue;
+        const source = assetUrl(asset);
+        if (!source) continue;
+        const url = new URL(source, window.location.origin);
+        if (url.protocol !== "data:" && url.origin !== window.location.origin)
+          throw new Error("Only files from your OpenClaw server can be collected into the Vault.");
+        if (!asset.dataUrl && url.pathname.startsWith("/vault/")) {
+          collected.add(asset.id);
+          continue; // Already owned by the server Vault; never re-upload deleted files.
+        }
+        const res = await fetch(source, { credentials: "same-origin" });
+        if (!res.ok) throw new Error(`The generated file could not be collected (${res.status}).`);
+        const blob = await res.blob();
+        if (blob.type.includes("text/html") && !asset.mime.includes("text/html"))
+          throw new Error("The generated file link returned a page instead of a file.");
+        const saved = await uploadVaultAsset(blob, asset.name, asset);
+        collected.add(asset.id);
+        cache = mergeAssets(cache, [saved]);
+        emit();
+      }
     });
   return queue;
 }
-/** Retain generated files exposed through the authenticated same-origin proxy. */
-export async function retainGeneratedFiles() {
+export async function uploadFile(file: File, metadata: Partial<VaultAsset> = {}) {
+  const saved = await uploadVaultAsset(file, file.name, metadata);
+  if (metadata.id) collected.add(metadata.id);
+  collected.add(saved.id);
+  cache = mergeAssets(cache, [saved]);
+  emit();
+  return saved;
+}
+export async function deleteAsset(asset: VaultAsset) {
   await queue.catch(() => {});
-  await loadVault();
-  const updates: VaultAsset[] = [];
-  for (const asset of cache) {
-    if (asset.origin !== "generated" || asset.dataUrl || !asset.url) continue;
-    const url = new URL(asset.url, window.location.origin);
-    if (url.origin !== window.location.origin) continue;
-    try {
-      const res = await fetch(url.href);
-      if (!res.ok) continue;
-      const blob = await res.blob();
-      if (blob.type.includes("text/html") && !asset.mime.includes("text/html")) continue;
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      updates.push({
-        ...asset,
-        dataUrl,
-        size: blob.size,
-        mime: asset.mime === "application/octet-stream" ? blob.type || asset.mime : asset.mime,
-      });
-    } catch {
-      /* Preserve the link when the proxy file is not available yet. */
-    }
-  }
-  if (updates.length) await saveAssets(updates);
+  await deleteVaultAsset(asset.id);
+  collected.add(asset.id);
+  cache = cache.filter((a) => a.id !== asset.id);
+  emit();
 }
 export const assetUrl = (a: Attachment) => a.dataUrl || a.url || "";
 export function byteSize(data: string): number | undefined {
@@ -204,16 +195,8 @@ export function downloadBlob(blob: Blob, name: string) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export async function downloadAsset(a: VaultAsset) {
-  const url = assetUrl(a);
-  if (!url) throw new Error("This older attachment has no retained file. Please attach it again.");
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Download failed (${res.status}).`);
-  const blob = await res.blob();
-  if (blob.type.includes("text/html") && !a.mime.includes("text/html"))
-    throw new Error("The file link returned a page instead of a file.");
-  downloadBlob(blob, a.name);
-  await saveAssets([{ ...a, size: blob.size }]);
+export function downloadAssetPath(a: VaultAsset) {
+  return serverAssetPath(a.url || `/vault/${encodeURIComponent(a.name)}`);
 }
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
