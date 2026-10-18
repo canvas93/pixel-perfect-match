@@ -126,7 +126,9 @@ export function ChatPanel({
     } finally {
       setBusy(false);
       controllers.current = [];
-      void retainGeneratedFiles().catch(() => toast.error("Some generated files could not be retained in the vault."));
+      void retainGeneratedFiles().catch(() =>
+        toast.error("Some generated files could not be retained in the vault."),
+      );
     }
   }
   function send() {
@@ -159,7 +161,9 @@ export function ChatPanel({
     } finally {
       setBusy(false);
       controllers.current = [];
-      void retainGeneratedFiles().catch(() => toast.error("Some generated files could not be retained in the vault."));
+      void retainGeneratedFiles().catch(() =>
+        toast.error("Some generated files could not be retained in the vault."),
+      );
     }
   }
   async function addFiles(list: FileList | null) {

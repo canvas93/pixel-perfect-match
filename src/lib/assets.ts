@@ -20,7 +20,13 @@ export function mergeAssets(existing: VaultAsset[], entries: VaultAsset[]) {
   const byId = new Map(existing.map((a) => [a.id, a]));
   entries.forEach((a) => {
     const previous = byId.get(a.id);
-    byId.set(a.id, { ...previous, ...a, size: a.size ?? previous?.size, createdAt: a.createdAt ?? previous?.createdAt, dataUrl: a.dataUrl || previous?.dataUrl || "" });
+    byId.set(a.id, {
+      ...previous,
+      ...a,
+      size: a.size ?? previous?.size,
+      createdAt: a.createdAt ?? previous?.createdAt,
+      dataUrl: a.dataUrl || previous?.dataUrl || "",
+    });
   });
   return [...byId.values()];
 }
@@ -63,8 +69,15 @@ export async function retainGeneratedFiles() {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
-      updates.push({ ...asset, dataUrl, size: blob.size, mime: asset.mime === "application/octet-stream" ? blob.type || asset.mime : asset.mime });
-    } catch { /* Preserve the link when the proxy file is not available yet. */ }
+      updates.push({
+        ...asset,
+        dataUrl,
+        size: blob.size,
+        mime: asset.mime === "application/octet-stream" ? blob.type || asset.mime : asset.mime,
+      });
+    } catch {
+      /* Preserve the link when the proxy file is not available yet. */
+    }
   }
   if (updates.length) await saveAssets(updates);
 }

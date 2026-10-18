@@ -70,8 +70,15 @@ describe("Content workflow", () => {
   it("keeps retained bytes, timestamp and size when rescanning chats or deleting them", () => {
     const asset = collectAssets(thread)[1];
     if (!asset) throw new Error("Missing generated asset");
-    const retained = { ...asset, size: 12, createdAt: 2000, dataUrl: "data:application/pdf;base64,YQ==" };
-    expect(mergeAssets([retained], [{ ...asset, size: undefined, createdAt: undefined }])[0]).toMatchObject({ size: 12, createdAt: 2000, dataUrl: "data:application/pdf;base64,YQ==" });
+    const retained = {
+      ...asset,
+      size: 12,
+      createdAt: 2000,
+      dataUrl: "data:application/pdf;base64,YQ==",
+    };
+    expect(
+      mergeAssets([retained], [{ ...asset, size: undefined, createdAt: undefined }])[0],
+    ).toMatchObject({ size: 12, createdAt: 2000, dataUrl: "data:application/pdf;base64,YQ==" });
     expect(mergeAssets([retained], [])).toEqual([retained]);
   });
   it("searches file names and precise dates and sorts timestamps", () => {
