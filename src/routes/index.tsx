@@ -9,6 +9,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "ChatGPT-style workspace for OpenClaw agents and automations." },
       { property: "og:title", content: "OpenClaw — Chat with your agents" },
       { property: "og:description", content: "ChatGPT-style workspace for OpenClaw agents and automations." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Index,
@@ -17,7 +19,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const navigate = useNavigate();
   useEffect(() => {
-    const existing = threads.all().find((t) => !t.jobId && t.messages.length === 0);
+    const existing = threads.all().filter((t) => !t.jobId).sort((a, b) => b.updatedAt - a.updatedAt)[0];
     const t = existing ?? threads.create();
     navigate({ to: "/c/$threadId", params: { threadId: t.id }, replace: true });
   }, [navigate]);

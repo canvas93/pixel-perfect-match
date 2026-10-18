@@ -2,7 +2,7 @@
 // reverse proxy handles auth and routing.
 
 export const AGENTS = [
-  { id: "default", label: "adin", note: "Default" },
+  { id: "adin", label: "adin", note: "Default" },
   { id: "support", label: "support" },
   { id: "sales-operations", label: "sales-operations" },
   { id: "ops", label: "ops" },
@@ -12,7 +12,7 @@ export const AGENTS = [
 ] as const;
 
 export type AgentId = (typeof AGENTS)[number]["id"];
-export const modelFor = (agent: string) => `openclaw/${agent}`;
+export const modelFor = (agent: string) => `openclaw/${agent === "default" ? "adin" : agent}`;
 
 export type Attachment = {
   name: string;
@@ -60,7 +60,8 @@ async function readError(res: Response): Promise<ApiError> {
 }
 
 async function* sse(res: Response): AsyncGenerator<{ event?: string | undefined; data: string }> {
-  const reader = res.body!.getReader();
+  if (!res.body) throw new ApiError(0, "The OpenClaw server returned an empty stream.");
+  const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buf = "";
   while (true) {
@@ -68,12 +69,14 @@ async function* sse(res: Response): AsyncGenerator<{ event?: string | undefined;
     if (done) break;
     buf += dec.decode(value, { stream: true });
     let idx;
-    while ((idx = buf.indexOf("\n\n")) !== -1) {
+    let separator;
+    while ((separator = /\r?\n\r?\n/.exec(buf)) !== null) {
+      idx = separator.index;
       const raw = buf.slice(0, idx);
-      buf = buf.slice(idx + 2);
+      buf = buf.slice(idx + separator[0].length);
       let event: string | undefined;
       const data: string[] = [];
-      for (const line of raw.split("\n")) {
+      for (const line of raw.split(/\r?\n/)) {
         if (line.startsWith("event:")) event = line.slice(6).trim();
         else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
       }
@@ -213,9 +216,37 @@ export async function rpc<T = any>(method: string, params: Record<string, unknow
     throw new ApiError(0, "Network error — could not reach the OpenClaw admin API.");
   }
   if (!res.ok) throw await readError(res);
-  const j = await res.json();
-  if (j?.error) throw new ApiError(500, j.error.message ?? JSON.stringify(j.error));
-  return (j?.result ?? j) as T;
+  let j;
+  try {
+    j = await res.json();
+  } catch {
+    throw new ApiError(res.status, "OpenClaw admin API returned an invalid response. Check that /api/v1/admin/rpc is routed to your OpenClaw server.");
+  }
+  if (j?.error) throw new ApiError(res.status, j.error.message ?? String(j.error));
+  return (j && Object.hasOwn(j, "result") ? j.result : j) as T;
+}
+
+function rpcArray<T>(result: unknown, keys: string[]): T[] {
+  if (Array.isArray(result)) return result;
+  if (result && typeof result === "object") {
+    const record = result as Record<string, unknown>;
+    for (const key of keys) {
+      if (Array.isArray(record[key])) return record[key] as T[];
+    }
+  }
+  throw new ApiError(200, "OpenClaw returned an unexpected list response.");
+}
+
+export async function listCronJobs(): Promise<CronJob[]> {
+  return rpcArray<CronJob>(await rpc("cron.list", {}), ["jobs", "items"]);
+}
+
+export async function listCronRuns(jobId: string): Promise<CronRun[]> {
+  return rpcArray<CronRun>(await rpc("cron.runs", { id: jobId, limit: 50 }), ["entries", "runs", "items"]);
+}
+
+export function runCronJob(jobId: string) {
+  return rpc("cron.run", { id: jobId, mode: "force" });
 }
 
 export type CronJob = {

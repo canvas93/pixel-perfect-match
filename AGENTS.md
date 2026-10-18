@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep OpenClaw requests browser-side and same-origin behind the deployment's authenticated reverse proxy; this preserves the existing backend rather than substituting another AI service.
+- Centralize cron request parameters and response normalization in the OpenClaw client so listing, history, and execution share consistent error handling.
