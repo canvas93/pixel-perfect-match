@@ -17,6 +17,7 @@ import {
   filterAssets,
   formatBytes,
   loadVault,
+  retainGeneratedFiles,
   saveAssets,
   useVault,
   type AssetSort,
@@ -55,6 +56,7 @@ function VaultPage() {
     let active = true;
     void loadVault()
       .then(() => saveAssets(list.flatMap((t) => collectAssets(t))))
+      .then(() => retainGeneratedFiles())
       .catch(() => {
         if (active)
           setError(

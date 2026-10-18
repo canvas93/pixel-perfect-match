@@ -16,6 +16,14 @@ let loaded = false;
 let queue = Promise.resolve();
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
+export function mergeAssets(existing: VaultAsset[], entries: VaultAsset[]) {
+  const byId = new Map(existing.map((a) => [a.id, a]));
+  entries.forEach((a) => {
+    const previous = byId.get(a.id);
+    byId.set(a.id, { ...previous, ...a, size: a.size ?? previous?.size, createdAt: a.createdAt ?? previous?.createdAt, dataUrl: a.dataUrl || previous?.dataUrl || "" });
+  });
+  return [...byId.values()];
+}
 export async function loadVault() {
   if (loaded) return;
   const saved = await get<VaultAsset[]>(KEY);
@@ -28,14 +36,37 @@ export function saveAssets(entries: VaultAsset[]) {
     .catch(() => {})
     .then(async () => {
       await loadVault();
-      const byId = new Map(cache.map((a) => [a.id, a]));
-      entries.forEach((a) => byId.set(a.id, { ...byId.get(a.id), ...a }));
-      const next = [...byId.values()];
+      const next = mergeAssets(cache, entries);
       await set(KEY, next);
       cache = next;
       emit();
     });
   return queue;
+}
+/** Retain generated files exposed through the authenticated same-origin proxy. */
+export async function retainGeneratedFiles() {
+  await queue.catch(() => {});
+  await loadVault();
+  const updates: VaultAsset[] = [];
+  for (const asset of cache) {
+    if (asset.origin !== "generated" || asset.dataUrl || !asset.url) continue;
+    const url = new URL(asset.url, window.location.origin);
+    if (url.origin !== window.location.origin) continue;
+    try {
+      const res = await fetch(url.href);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      if (blob.type.includes("text/html") && !asset.mime.includes("text/html")) continue;
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      updates.push({ ...asset, dataUrl, size: blob.size, mime: asset.mime === "application/octet-stream" ? blob.type || asset.mime : asset.mime });
+    } catch { /* Preserve the link when the proxy file is not available yet. */ }
+  }
+  if (updates.length) await saveAssets(updates);
 }
 export const assetUrl = (a: Attachment) => a.dataUrl || a.url || "";
 export function byteSize(data: string): number | undefined {
